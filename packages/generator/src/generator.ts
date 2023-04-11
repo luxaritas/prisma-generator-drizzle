@@ -32,7 +32,7 @@ generatorHandler({
     }
 
     const importStr = Array.from(imports.entries()).map(
-      ([from, vals]) => `import {${Array.from(vals.values())}} from '${from}';`
+      ([from, vals]) => `import {${Array.from(vals.values()).join(',')}} from '${from}';`
     ).join('\n');
 
     const modelStr = models.map(model => model.code).join('\n\n');

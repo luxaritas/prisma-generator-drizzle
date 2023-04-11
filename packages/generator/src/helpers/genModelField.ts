@@ -12,7 +12,7 @@ const types = {
         ['Decimal', {ctor: 'decimal', opts: {precision: 65, scale: 30}}],
         ['DateTime', {ctor: 'datetime', opts: {mode: 'date', fsp: 3}}],
         ['Json', {ctor: 'json'}],
-        // TODO: Prisma actually maps this as LONGBLOB
+        // FIXME: Prisma actually maps this as LONGBLOB
         ['Bytes', {ctor: 'varbinary', opts: {length: 4294967295}}]
     ])
 };
@@ -49,10 +49,13 @@ export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
             || typeof field.default === 'number'
             || typeof field.default === 'boolean'
         ) {
-            return `.default(${field.default})`;
+            return `.default(${field.default}${field.type === 'BigInt' ? 'n' : ''})`;
         }
         if (Array.isArray(field.default)) {
-            return `.default([${field.default}])`;
+            const defaultVals = field.default
+                .map((defaultVal) => field.type === 'BigInt' ? `${defaultVal}n` : defaultVal)
+                .join(',')
+            return `.default([${defaultVals}])`;
         }
         if ('name' in field.default) {
             if (field.default.name === 'autoincrement') {
@@ -69,6 +72,7 @@ export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
                 return `/* Default ${field.default.name} unsupported */`;
             }
         }
+        return '';
     }
 
     return {
