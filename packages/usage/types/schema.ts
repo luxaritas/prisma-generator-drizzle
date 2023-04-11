@@ -17,7 +17,7 @@ export const User = mysqlTable('User', {
     .default(sql`now()`),
   foo: varchar('foo', { length: 191 }).notNull(),
   bar: varchar('bar', { length: 191 }).notNull(),
-  baz: varchar('baz', { length: 191 }).notNull(),
+  baz: varchar('mapped_baz', { length: 191 }).notNull(),
 })
 
 export const Post = mysqlTable('Post', {

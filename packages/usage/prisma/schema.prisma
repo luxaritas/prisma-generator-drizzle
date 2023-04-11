@@ -19,7 +19,7 @@ model User {
 
   foo String @unique
   bar String
-  baz String
+  baz String @map("mapped_baz")
   @@unique([bar, baz])
 }
 
