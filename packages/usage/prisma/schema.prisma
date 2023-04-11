@@ -4,14 +4,35 @@ generator custom_generator {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
 model User {
   id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  email String  @unique @ignore
+  dbgen  Int @default(dbgenerated("foobar"))
+  cuid  String @default(cuid())
+  uuid  String @default(uuid())
+  now  DateTime @default(now())
+  posts Post[]
+
+  foo String @unique
+  bar String
+  baz String
+  @@unique([bar, baz])
+}
+
+model Post {
+  id     Int  @id @default(autoincrement())
+  author User @relation(fields: [userId], references: [id])
+  userId Int
+}
+
+model Ignored {
+  foobar Int @id
+
+  @@ignore
 }
 
 enum NotificationType {

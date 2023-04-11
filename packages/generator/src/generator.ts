@@ -1,15 +1,13 @@
 import { generatorHandler, GeneratorOptions } from '@prisma/generator-helper'
-import { logger } from '@prisma/sdk'
 import path from 'path'
 import { GENERATOR_NAME } from './constants'
-import { genEnum } from './helpers/genEnum'
 import { writeFileSafely } from './utils/writeFileSafely'
+import { genModel } from './helpers/genModel'
 
 const { version } = require('../package.json')
 
 generatorHandler({
   onManifest() {
-    logger.info(`${GENERATOR_NAME}:Registered`)
     return {
       version,
       defaultOutput: '../generated',
@@ -17,15 +15,27 @@ generatorHandler({
     }
   },
   onGenerate: async (options: GeneratorOptions) => {
-    options.dmmf.datamodel.enums.forEach(async (enumInfo) => {
-      const tsEnum = genEnum(enumInfo)
+    const imports = new Map<string, Set<string>>();
+    const addImport = (from: string, name: string) => {
+      imports.set(from, (imports.get(from) ?? new Set()).add(name))
+    }
 
-      const writeLocation = path.join(
-        options.generator.output?.value!,
-        `${enumInfo.name}.ts`,
-      )
+    const outputFile = (fileName: string) => path.join(
+      options.generator.output?.value!,
+      `${fileName}.ts`,
+    );
+    
+    const models = options.dmmf.datamodel.models.map(model => genModel(model, options));
 
-      await writeFileSafely(writeLocation, tsEnum)
-    })
+    for (const importInfo of models.flatMap(model => model.imports)) {
+      if (importInfo) addImport(importInfo.from, importInfo.name);
+    }
+
+    const importStr = Array.from(imports.entries()).map(
+      ([from, vals]) => `import {${Array.from(vals.values())}} from '${from}';`
+    ).join('\n');
+
+    const modelStr = models.map(model => model.code).join('\n\n');
+    await writeFileSafely(outputFile('schema'), `${importStr}\n\n${modelStr}`);
   },
 })

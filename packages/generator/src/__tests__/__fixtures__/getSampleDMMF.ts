@@ -1,10 +1,10 @@
-import { getDMMF, getSchemaSync } from '@prisma/sdk'
+import { getDMMF, getSchema } from '@prisma/internals'
 import path from 'path'
 
-const samplePrismaSchema = getSchemaSync(path.join(__dirname, './sample.prisma'))
+const samplePrismaSchema = getSchema(path.join(__dirname, './sample.prisma'))
 
 export const getSampleDMMF = async () => {
   return getDMMF({
-    datamodel: samplePrismaSchema,
+    datamodel: await samplePrismaSchema,
   })
 }
