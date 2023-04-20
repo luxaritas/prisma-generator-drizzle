@@ -6,11 +6,19 @@ export const genModel = (model: DMMF.Model, options: GeneratorOptions) => {
     let tableType: string;
 
     const provider = options.datasources[0].provider;
-    if (provider === 'mysql') {
-        tableFrom = 'drizzle-orm/mysql-core';
-        tableType = 'mysqlTable';
-    } else {
-        throw new Error(`Provider ${provider} is not currently supported`)
+    switch (provider) {
+        case 'mysql':
+            tableFrom = 'drizzle-orm/mysql-core';
+            tableType = 'mysqlTable';
+            break;
+        case 'postgres':
+        case 'postgresql':
+            tableFrom = 'drizzle-orm/pg-core';
+            tableType = 'pgTable';
+        case 'sqlite':
+            tableFrom = 'drizzle-orm/sqlite-core';
+            tableType = 'sqliteTable';
+        default: throw new Error(`Provider ${provider} is not currently supported`);   
     }
 
     const fields = model.fields.map((field) => genModelField(field, options));

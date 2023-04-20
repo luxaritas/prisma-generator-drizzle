@@ -1,8 +1,28 @@
 import { DMMF, GeneratorOptions } from '@prisma/generator-helper'
 import { GENERATOR_NAME } from '../constants';
 
+interface FieldInfo {
+    ctor: string;
+    opts?: object;
+    generic?: string;
+}
+
+const postgresTypes = new Map<string, FieldInfo>([
+    ['String', {ctor: 'text', generic: '<string, string, Readonly<[string, ...string[]]>>'}],
+    ['Boolean', {ctor: 'boolean', generic: '<string>'}],
+    ['Int', {ctor: 'integer', generic: '<string>'}],
+    ['BigInt', {ctor: 'bigint', generic: '<string, \'bigint\'>'}],
+    ['Float', {ctor: 'doublePrecision', generic: '<string>'}],
+    // TODO: Prisma maps this to `decimal`, but Drizzle aliases decimal to numeric
+    ['Decimal', {ctor: 'decimal', opts: { precision: 65, scale: 30 }, generic: '<string>'}],
+    ['DateTime', {ctor: 'timestamp', opts: {precision: 3}, generic: '<string, \'date\'>'}],
+    ['Json', {ctor: 'jsonb', generic: '<string>'}],
+    // TODO: Prisma maps this to `bytea`, Drizzle doesn't seem to have any relevant columns
+    // ['Bytes', {}]
+]);
+
 const types = {
-    mysql: new Map([
+    mysql: new Map<string, FieldInfo>([
         ['String', { ctor: 'varchar', opts: { length: 191 }, generic: '<string, string, Readonly<[string, ...string[]]>>' }],
         // FIXME: Prisma actually maps this as TINYINT and then casts to boolean
         ['Boolean', { ctor: 'boolean', generic: '<string>' }],
@@ -14,12 +34,30 @@ const types = {
         ['Json', { ctor: 'json', generic: '<string>' }],
         // FIXME: Prisma actually maps this as LONGBLOB
         ['Bytes', { ctor: 'varbinary', opts: { length: 4294967295 }, generic: '<string>' }],
-    ])
+    ]),
+    postgresql: postgresTypes,
+    postgres: postgresTypes,
+    sqlite: new Map<string, FieldInfo>([
+        ['String', {ctor: 'text', generic: '<string, string, Readonly<[string, ...string[]]>>'}],
+        // Pending https://github.com/drizzle-team/drizzle-orm/pull/411 for boolean mode
+        ['Boolean', {ctor: 'integer', generic: '<string, \'number\'>'}],
+        ['Int', {ctor: 'integer', generic: '<string, \'number\'>'}],
+        // TODO: Drizzle doesn't support bigint mode for sqlite
+        ['BigInt', {ctor: 'integer', generic: '<string, \'number\'>'}],
+        ['Float', {ctor: 'real', generic: '<string>'}],
+        // TODO: Prisma actually maps this to `decimal`
+        ['Decimal', {ctor: 'numeric', generic: '<string>'}],
+        // TODO: Drizzle doesn't support a date mode numeric
+        ['DateTime', {ctor: 'numeric', generic: '<string>'}],
+        // Prisma doesn't support this
+        // ['Json', {}],
+        ['Bytes', {ctor: 'blob', generic: '<string, \'buffer\'>'}]
+    ]),
 };
 
 export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
     const provider = options.datasources[0].provider;
-    if (provider !== 'mysql') {
+    if (provider !== 'mysql' && provider !== 'postgresql' && provider !== 'postgres' && provider !== 'sqlite') {
         console.log(`[WARN] ${GENERATOR_NAME}: Field ${field.name}: Provider ${provider} is not currently supported`);
         return {
             code: `// Field ${field.name} is unavailable due to unsupported provider ${provider}`,
@@ -36,7 +74,19 @@ export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
         }
     }
 
-    const imports = [{name: fieldInfo.ctor, from: 'drizzle-orm/mysql-core'}];
+    let imports;
+    switch (provider) {
+        case 'mysql':
+            imports = [{name: fieldInfo.ctor, from: 'drizzle-orm/mysql-core'}];
+            break;
+        case 'postgres':
+        case 'postgresql':
+            imports = [{name: fieldInfo.ctor, from: 'drizzle-orm/pg-core'}];
+            break;
+        case 'sqlite':
+            imports = [{name: fieldInfo.ctor, from: 'drizzle-orm/sqlite-core'}];
+            break;
+    }
 
     const dbName: string = field.dbName ?? field.name;
     const opts = fieldInfo.opts ? `, ${JSON.stringify(fieldInfo.opts)}` : '';
