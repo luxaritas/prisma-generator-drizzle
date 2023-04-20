@@ -3,17 +3,17 @@ import { GENERATOR_NAME } from '../constants';
 
 const types = {
     mysql: new Map([
-        ['String', {ctor: 'varchar', opts: {length: 191}}],
+        ['String', { ctor: 'varchar', opts: { length: 191 }, generic: '<string, string, Readonly<[string, ...string[]]>>' }],
         // FIXME: Prisma actually maps this as TINYINT and then casts to boolean
-        ['Boolean', {ctor: 'boolean'}],
-        ['Int', {ctor: 'int'}],
-        ['BigInt', {ctor: 'bigint', opts: {mode: 'bigint'}}],
-        ['Float', {ctor: 'double'}],
-        ['Decimal', {ctor: 'decimal', opts: {precision: 65, scale: 30}}],
-        ['DateTime', {ctor: 'datetime', opts: {mode: 'date', fsp: 3}}],
-        ['Json', {ctor: 'json'}],
+        ['Boolean', { ctor: 'boolean', generic: '<string>' }],
+        ['Int', { ctor: 'int', generic: '<string>' }],
+        ['BigInt', { ctor: 'bigint', opts: { mode: 'bigint' }, generic: '<string, \'bigint\'>' }],
+        ['Float', { ctor: 'double', generic: '<string>' }],
+        ['Decimal', { ctor: 'decimal', opts: { precision: 65, scale: 30 }, generic: '<string>' }],
+        ['DateTime', { ctor: 'datetime', opts: { mode: 'date', fsp: 3 }, generic: '<string, \'bigint\'>' }],
+        ['Json', { ctor: 'json', generic: '<string>' }],
         // FIXME: Prisma actually maps this as LONGBLOB
-        ['Bytes', {ctor: 'varbinary', opts: {length: 4294967295}}]
+        ['Bytes', { ctor: 'varbinary', opts: { length: 4294967295 }, generic: '<string>' }],
     ])
 };
 
@@ -75,8 +75,10 @@ export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
         return '';
     }
 
+    const specifyGeneric = options.generator.config['looseColumnNameType'] === 'true';
+
     return {
-        code: `${field.name}: ${fieldInfo.ctor}('${dbName}'${opts})${notNull}${primaryKey}${getDefault()}`,
+        code: `${field.name}: ${fieldInfo.ctor}${specifyGeneric ? fieldInfo.generic : ''}('${dbName}'${opts})${notNull}${primaryKey}${getDefault()}`,
         imports,
     };
 }
