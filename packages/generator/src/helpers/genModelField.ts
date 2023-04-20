@@ -115,7 +115,14 @@ export const genModelField = (field: DMMF.Field, options: GeneratorOptions) => {
                 imports.push({name: 'sql', from: 'drizzle-orm'})
                 return `.default(sql\`${field.default.args[0]}\`)`;
             } else if (field.default.name === 'now') {
-                return `.default(sql\`now()\`)`;
+                switch(provider) {
+                    case 'postgres':
+                    case 'postgresql':
+                    case 'sqlite':
+                        return `.default(sql\`CURRENT_TIMESTAMP\`)`;
+                    case 'mysql':
+                        return `.default(sql\`CURRENT_TIMESTAMP(3)\`)`;
+                }
             } else {
                 // ex uuid outside of postgres, cuid
                 console.log(`[WARN] ${GENERATOR_NAME}: Field ${field.name}: Default ${field.default.name} is unsupported`);
